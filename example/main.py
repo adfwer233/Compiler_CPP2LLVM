@@ -9,13 +9,13 @@ def main(argv):
     input_stream = FileStream(argv[1])
     lexer = CPP14Lexer(input_stream)
     stream = CommonTokenStream(lexer)
-    parser = CPP14Parser(stream)
-    tree = parser.translationUnit()
-    print(tree.toStringTree(recog=parser))
+    # parser = CPP14Parser(stream)
+    # tree = parser.translationUnit()
+    # print(tree.toStringTree(recog=parser))
 
-    # print(stream.getText())
-    # for item in stream.tokens:
-    #     print(item)
+    print(stream.getText())
+    for item in stream.tokens:
+        print(item)
 
 
 if __name__ == '__main__':

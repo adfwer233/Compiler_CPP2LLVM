@@ -34,3 +34,9 @@ antlr4 -Dlanguage=Python3 CPP14Lexer.g4 CPP14Parser.g4
 python main.py test.cpp
 ```
 即可生成语法树
+
+## antlr语法文件可能的问题
+
+- [x] 整数没有正负号
+- [x] DigitSequence没有判0
+- [x] CChar 和 SChar 的 `~ ['\\\r\n]` 可能冗余？
