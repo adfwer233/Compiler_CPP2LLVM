@@ -1,4 +1,4 @@
-lexer grammar MyCPP;
+lexer grammar MyCPPLexer;
 
 // Keywords
 
@@ -30,11 +30,16 @@ Int: 'int';
 
 Long: 'long';
 
+Namespace: 'namespace';
+
 Return: 'return';
 
 Sizeof: 'sizeof';
 
 True_: 'true';
+
+Using: 'using';
+
 // Operators
 
 LeftParen: '(';
@@ -222,6 +227,14 @@ fragment SimpleEscapeCharacter:
 
 StringLiteral: (RawString | StandardString);
 
+// Identifier
+fragment Identifiernondigit: NONDIGIT;
+
+Identifier:
+	Identifiernondigit (Identifiernondigit | DecimalDigit)*;
+
+// Directive
+Directive: '#' ~ [\n]* -> channel (HIDDEN);
 
 // Literals to skip
 Whitespace: [ \t]+ -> skip;
