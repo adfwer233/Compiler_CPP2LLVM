@@ -205,7 +205,7 @@ CharacterLiteral: '\'' CharCharacter+ '\'';
 
 fragment NONDIGIT:[a-zA-Z_];
 
-fragment RawString: 'R"''"';
+fragment RawString: 'R"(' StringCharacter* ')"';
 
 fragment StringCharacter: ~ ["\\] | SimpleEscapeCharacter ;
 
