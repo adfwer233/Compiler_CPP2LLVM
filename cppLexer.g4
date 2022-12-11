@@ -18,7 +18,7 @@ param : myType myID;
 //函数体
 myFuncBody : body myReturn;
 body : (myBlock | func';')*;
-myReturn : 'return' (myInt|myID)? ';';
+myReturn : 'return' (myInt|myID)?';';
 
 //语句块
 // todo while & for
@@ -26,7 +26,7 @@ myBlock : initBlock | arrayBlock | assignBlock | ifBlock | myReturn;
 
 //初始化
 initBlock : myType myID ('=' expr) ? (',' myID ('=' expr)?)* ';';
-arrayBlock : myType myID '[' myInt ']' ';';
+arrayBlock : (((myType myID '[' myInt ']') '=' '[' expr (',' expr)? ']') | ('char' myID '[]' '=' expr)) ';';
 
 //赋值
 assignBlock : ((myArray | myID ) '=')+ expr ';';
@@ -60,7 +60,7 @@ buildin : 'endl';
 
 myType : 'int' | 'double' | 'char' | 'string';
 
-myArray : myID '[' myInt ']';
+myArray : myID '[' (myInt)? ']';
 
 myVoid : 'void';
 
@@ -77,9 +77,9 @@ myString : STRING;
 // todo more func
 func : (coutFunc | cinFunc);
 
-coutFunc : 'cout' ('<<' expr)+ ';';
+coutFunc : ('cout' ('<<' expr)+) ';';
 
-cinFunc : 'cin' ('>>' expr)+ ';';
+cinFunc : ('cin' ('>>' expr)+) ';';
 
 ID : [a-zA-Z_][0-9a-zA-Z_]*;
 
@@ -93,8 +93,14 @@ STRING : '"'.*?'"';
 
 LIB : [a-zA-Z]+('.h')?;
 
-LineComment: '//'.*?'\r'?'\n'   -> skip;
+// Directive
+Directive: '#' ~ [\n]* -> channel (HIDDEN);
 
-BlockComment:  '/*'.*?'*/'  -> skip;
+// Literals to skip
+Whitespace: [ \t]+ -> skip;
 
-WS : [ \t\r\n]+ -> skip ;
+Newline: ('\r' '\n'? | '\n') -> skip;
+
+BlockComment: '/*' .*? '*/' -> skip;
+
+LineComment: '//' ~ [\r\n]* -> skip;
