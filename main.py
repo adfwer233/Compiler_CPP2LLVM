@@ -1,21 +1,22 @@
 import sys
 from antlr4 import *
-from src.grammar.MyCPPLexer import MyCPPLexer
+from src.grammar.cppLexerLexer import cppLexerLexer
+from src.grammar.cppLexerParser import cppLexerParser
 
 
 def main(argv):
     input_stream = FileStream(argv[1])
-    lexer = MyCPPLexer(input_stream)
+    lexer = cppLexerLexer(input_stream)
     stream = CommonTokenStream(lexer)
 
-    # parser = CPP14Parser(stream)
-    # tree = parser.translationUnit()
-    # print(tree.toStringTree(recog=parser))
+    parser = cppLexerParser(stream)
+    tree = parser.prog()
+    print(tree.toStringTree(recog=parser))
 
-    # stream.getText()
-    stream.fill()
-    for token in stream.tokens:
-        print(token)
+    # # stream.getText()
+    # stream.fill()
+    # for token in stream.tokens:
+    #     print(token)
 
 
 if __name__ == '__main__':
