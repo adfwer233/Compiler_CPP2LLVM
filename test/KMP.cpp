@@ -1,3 +1,4 @@
+#include <iostream>
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,9 +9,9 @@ int main() {
 	next[0] = -1;
 	int lenS_string, lenT_string;
 	printf("Source string: ");
-	gets(S_string);
+	scanf("%s", S_string);
 	printf("Pattern string: ");
-	gets(T_string);
+	scanf("%s", T_string);
     lenS_string = strlen(S_string);
 	lenT_string = strlen(T_string);
 	

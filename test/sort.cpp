@@ -1,4 +1,4 @@
-
+#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -36,8 +36,8 @@ void QuickSort(int low, int high)
         }
 
         arr[i] = k;
-        QuickSort(arr, low, i - 1);
-        QuickSort(arr, i + 1, high);
+        QuickSort(low, i - 1);
+        QuickSort(i + 1, high);
     }
 }
 
@@ -52,12 +52,9 @@ int main()
 
     QuickSort(0, maxlen - 1);
 
-    printf("排序后的数组\n");
-    int i;
-
     for (i = 0; i < maxlen; i++)
     {
-        printf("%d", arr[i]);
+        printf("%d ", arr[i]);
     }
 
     return 0;
