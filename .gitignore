@@ -1,0 +1,4 @@
+*/*.out
+*/.antlr
+__pycache__/
+/src
