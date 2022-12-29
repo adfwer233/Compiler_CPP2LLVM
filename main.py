@@ -47,20 +47,96 @@ class myCppVisitor(cppLexerVisitor):
         print(ctx.myType())
         valType = self.visit(ctx.myType())
         for idText, expr in zip(ctx.myID(), ctx.expr()):
-            print(idText.getText(), expr.getText())
+            exprRes = self.visit(expr)
+            print(idText.getText(), expr.getText(), exprRes['value'])
             if self.symbolTable.get_current_level() == 0: 
                 globalVar = GlobalVariable(self.Module, valType, idText.getText())
                 globalVar.linkage = 'internal'
-                globalVar.initializer = ir.Constant(valType, expr) # TODO: add expr translation
+                globalVar.initializer = ir.Constant(valType, exprRes['value']) # TODO: add expr translation
                 self.symbolTable.addGlobal(idText.getText(), SymbolItem(valType, globalVar))
             else:
                 builder = self.Builders[-1]
                 localVar = builder.alloca(valType, idText.getText())
-                builder.store(ir.Constant(valType, expr), localVar)
+                builder.store(ir.Constant(valType, exprRes['value']), localVar)
                 self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
         print(self.symbolTable.table)
         return
-        
+    
+    def visitAssignBlock(self, ctx: cppLexerParser.AssignBlockContext):
+        print(ctx.getChild(0).getText())
+        print("assign block")
+
+        # TODO: add array assign
+        leftSymbol = self.symbolTable.getSymbolItem(ctx.getChild(0).getText())
+        builder = self.Builders[-1]
+        exprRes = self.visit(ctx.expr())
+        builder.store(exprRes['value'], leftSymbol.get_value())
+
+
+    def visitInt(self, ctx: cppLexerParser.IntContext):
+        print("visit Int")
+        if ctx.getChild(0).getText == '-':
+            intRes = self.visit(ctx.getChild(1))
+            builder = self.Builders[-1]
+            res = builder.neg(intRes['value'])
+            return {
+                'type': intRes['type'], 
+                'value': res
+            }
+        return self.visit(ctx.getChild(0))
+    
+    def visitDouble(self, ctx:cppLexerParser.DoubleContext):
+        if ctx.getChild(0).getText == '-':
+            intRes = self.visit(ctx.getChild(1))
+            builder = self.Builders[-1]
+            res = builder.neg(intRes['value'])
+            return {
+                'type': intRes['type'], 
+                'value': res
+            }
+        return self.visit(ctx.getChild(0))
+
+    def visitChar(self, ctx: cppLexerParser.CharContext):
+        return self.visit(ctx.getChild(0))
+
+    def visitOper(self, ctx: cppLexerParser.OperContext):
+        print("visit operations")
+        #TODO: operator priority
+
+        builder = self.Builders[-1]
+        operand1 = self.visit(ctx.getChild(0))
+        operand2 = self.visit(ctx.getChild(2))
+        if ctx.getChild(1).getText() == '+':
+            res = builder.add(operand1['value'], operand2['value'])
+        elif ctx.getChild(1).getText() == '-':
+            res = builder.sub(operand1['value'], operand2['value'])
+        elif ctx.getChild(1).getText() == '*':
+            res = builder.mul(operand1['value'], operand2['value'])
+        elif ctx.getChild(1).getText() == '/':
+            res = builder.sdiv(operand1['value'], operand2['value'])
+        elif ctx.getChild(1).getText() == '%':
+            res = builder.srem(operand1['value'], operand2['value'])
+        return {
+            'type': operand1['type'],
+            'value': res
+        }
+    
+    def visitRelop(self, ctx: cppLexerParser.RelopContext):
+        print("visit relop", ctx.getChild(1).getText())
+        builder = self.Builders[-1]
+        operand1 = self.visit(ctx.getChild(0))
+        operand2 = self.visit(ctx.getChild(2))
+
+        # TODO: add double
+        res = builder.icmp_signed(ctx.getChild(1).getText(), operand1['value'], operand2['value'])
+        return {
+            'type': ir.IntType(1),
+            'value': res
+        }
+
+    def visitIdentifier(self, ctx: cppLexerParser.IdentifierContext):
+        return self.visit(ctx.getChild(0))
+
     def visitParams(self, ctx: cppLexerParser.ParamsContext):
         parameterList = []
         for param in ctx.param():
@@ -98,20 +174,70 @@ class myCppVisitor(cppLexerVisitor):
         
         return functionReturn
 
+    def visitReturnBlock(self, ctx: cppLexerParser.returnBlock):
+        builder = self.Builders[-1]
+        if ctx.getChildCount() == 2:
+            res = builder.ret_void()
+            return {
+                'type': ir.VoidType(),
+                'value': res
+            }
+        else:
+            exprRes = self.visit(ctx.getChild(1))
+            res = builder.ret(exprRes['value'])
+            return {
+                'type': ir.VoidType(),
+                'value': res
+            }
+
     def visitMyBlock(self, ctx: cppLexerParser.MyBlockContext):
         self.symbolTable.enterScope()
         super().visitMyBlock(ctx)
         self.symbolTable.exitScope()
         print("testasdf")
         return
+
     def visitMyType(self, ctx: cppLexerParser.MyTypeContext):
         text = ctx.getText()
         if text == 'int':
             return ir.IntType(32)
+        elif text == 'bool':
+            return ir.IntType(1)
+        elif text == 'char':
+            return ir.IntType(8)
+        elif text == 'double':
+            return ir.DoubleType()
+
 
     def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
         print(ctx.getText())
-        return super().visitMyInt(ctx)
+        return {
+            'type': ir.IntType(32),
+            'value': ir.Constant(ir.IntType(32), int(ctx.getText()))
+        }
+
+    def visitMyDouble(self, ctx: cppLexerParser.MyDoubleContext):
+        return {
+            'type': ir.DoubleType(),
+            'value': ir.Constant(ir.DoubleType(), float(ctx.getText()))
+        }
+
+    def visitMyID(self, ctx: cppLexerParser.MyIDContext):
+        idName = ctx.getText()
+        item = self.symbolTable.getSymbolItem(idName)
+        builder = self.Builders[-1]
+        print(item.get_type())
+        return {
+            'type': item.get_type(),
+            'value': builder.load(item.get_value())
+        }
+
+    def visitMyChar(self, ctx: cppLexerParser.MyCharContext):
+        print("my char " * 5)
+        return {
+            'type': ir.IntType(8),
+            'value': ir.Constant(ir.IntType(8), ord(ctx.getText()[1]))
+        }
 
 def main(argv):
     input_stream = FileStream(argv[1])

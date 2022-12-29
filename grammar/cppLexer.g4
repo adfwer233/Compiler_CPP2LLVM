@@ -63,27 +63,26 @@ for3 : myID '=' expr;
 condition : expr;
 
 expr
-    : '(' expr ')'
-    | expr op=('+' | '-' | '*' | '/' | '%') expr
-    | expr op=('==' | '!=' | '<' | '<=' | '>' | '>=') expr
-    | op='!' expr
-    | expr '&&' expr
-    | expr '||' expr
-    | (op='-')? myInt
-    | (op='-')? myDouble
-    | myChar
-    | myArray
-    | myString
-    | myID
-    | structMem
-    | func
-    | buildin
+    : '(' expr ')'                                              #parens              
+    | expr op=('+' | '-' | '*' | '/' | '%') expr                #oper
+    | expr op=('==' | '!=' | '<' | '<=' | '>' | '>=') expr      #relop
+    | op='!' expr                   #neg
+    | expr '&&' expr                #and
+    | expr '||' expr                #or
+    | (op='-')? myInt               #int
+    | (op='-')? myDouble            #double
+    | myChar                        #char
+    | myArray                       #array
+    | myString                      #string
+    | myID                          #identifier
+    | structMem                     #structmember
+    | func                          #function
     ;
 
 //todo more buildin
 buildin : 'endl';
 
-myType : 'int' | 'double' | 'char' | 'string';
+myType : 'int' | 'double' | 'char' | 'string' | 'bool';
 
 myArray : (myID)? '[' expr (','expr)* ']';
 
