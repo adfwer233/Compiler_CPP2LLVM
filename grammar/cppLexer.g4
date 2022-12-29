@@ -64,9 +64,10 @@ condition : expr;
 
 expr
     : '(' expr ')'
-    | expr op=('+' | '-' | '*' | '/' | '%') expr
-    | expr op=('==' | '!=' | '<' | '<=' | '>' | '>=') expr
     | op='!' expr
+    | expr op=('*' | '/' | '%') expr
+    | expr op=('+' | '-')
+    | expr op=('==' | '!=' | '<' | '<=' | '>' | '>=') expr
     | expr '&&' expr
     | expr '||' expr
     | (op='-')? myInt

@@ -42,6 +42,9 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders = []
         self.symbolTable = SymbolTable()
 
+        #load param
+        self.loadParam = True
+
 
     def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
         print(ctx.myType())
@@ -112,6 +115,28 @@ class myCppVisitor(cppLexerVisitor):
     def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
         print(ctx.getText())
         return super().visitMyInt(ctx)
+
+    def visitIfBlock(self, ctx: cppLexerParser.IfBlockContext):
+        '''
+        myIf : 'if' '(' condition ')' '{' myBody '}';
+        '''
+        self.symbolTable.enterScope()
+
+        #if block: true or false
+        builder = self.Builders[-1]
+        trueblk = builder.append_basic_block()
+        falseblk = builder.append_basic_block()
+
+        #route block base on the condition result
+        result = self.visit(ctx.getChild(2))
+        builder.cbranch(result['name'], trueblk, falseblk)
+
+        #condition true body
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(trueblk))
+        self.visit(ctx.getChild(5)) # body
+
+        #todo determine whether there is condition false
     
     def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
         # whileBlock : 'while' '(' condition ')' '{' myBody '}';
@@ -146,7 +171,6 @@ class myCppVisitor(cppLexerVisitor):
     def visitForBlock(self, ctx: cppLexerParser.ForBlockContext):
         '''
         forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
-        for1 : (myType)? myID '=' expr;
         for3 : myID '=' expr;
         '''
         self.symbolTable.enterScope()
