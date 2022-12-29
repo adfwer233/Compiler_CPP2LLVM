@@ -116,7 +116,7 @@ class myCppVisitor(cppLexerVisitor):
         print(ctx.getText())
         return super().visitMyInt(ctx)
 
-    def visitIfBlock(self, ctx: cppLexerParser.IfBlockContext):
+    def visitMyIf(self, ctx: cppLexerParser.MyIfContext):
         '''
         myIf : 'if' '(' condition ')' '{' myBody '}';
         '''
@@ -135,8 +135,6 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(trueblk))
         self.visit(ctx.getChild(5)) # body
-
-        #todo determine whether there is condition false
     
     def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
         # whileBlock : 'while' '(' condition ')' '{' myBody '}';
