@@ -56,10 +56,11 @@ class myCppVisitor(cppLexerVisitor):
             else:
                 builder = self.Builders[-1]
                 localVar = builder.alloca(valType, idText.getText())
-                builder.store(expr, localVar)
+                builder.store(ir.Constant(valType, expr), localVar)
                 self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
         print(self.symbolTable.table)
-
+        return
+        
     def visitParams(self, ctx: cppLexerParser.ParamsContext):
         parameterList = []
         for param in ctx.param():
@@ -89,7 +90,7 @@ class myCppVisitor(cppLexerVisitor):
             builder.store(funcArg, address)
             self.symbolTable.addLocal(param[1], SymbolItem(param[0], address))
 
-        # functionReturn = self.visit(ctx.myBlock)
+        functionReturn = self.visit(ctx.myBlock())
         if not self.Builders[-1].block.is_terminated:
             self.Builders[-1].ret_void()
 
@@ -98,8 +99,11 @@ class myCppVisitor(cppLexerVisitor):
         return functionReturn
 
     def visitMyBlock(self, ctx: cppLexerParser.MyBlockContext):
-        pass
-
+        self.symbolTable.enterScope()
+        super().visitMyBlock(ctx)
+        self.symbolTable.exitScope()
+        print("testasdf")
+        return
     def visitMyType(self, ctx: cppLexerParser.MyTypeContext):
         text = ctx.getText()
         if text == 'int':
