@@ -42,6 +42,9 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders = []
         self.symbolTable = SymbolTable()
 
+        #load param
+        self.loadParam = True
+
 
     def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
         print(ctx.myType())
@@ -238,6 +241,98 @@ class myCppVisitor(cppLexerVisitor):
             'type': ir.IntType(8),
             'value': ir.Constant(ir.IntType(8), ord(ctx.getText()[1]))
         }
+
+    def visitMyIf(self, ctx: cppLexerParser.MyIfContext):
+        '''
+        myIf : 'if' '(' condition ')' '{' myBody '}';
+        '''
+        self.symbolTable.enterScope()
+
+        #if block: true or false
+        builder = self.Builders[-1]
+        trueblk = builder.append_basic_block()
+        falseblk = builder.append_basic_block()
+
+        #route block base on the condition result
+        result = self.visit(ctx.getChild(2))
+        builder.cbranch(result['name'], trueblk, falseblk)
+
+        #condition true body
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(trueblk))
+        self.visit(ctx.getChild(5)) # body
+    
+    def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
+        # whileBlock : 'while' '(' condition ')' '{' myBody '}';
+        self.symbolTable.enterScope()
+        builder = self.Builders[-1]
+
+        whileCon = builder.append_basic_block()
+        whileBody = builder.append_basic_block()
+        whileEnd = builder.append_basic_block()
+
+        builder.branch(whileCon)
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(whileCon))
+
+        result = self.visit(ctx.getChild(2)) #cond
+        self.Builders[-1].cbranch(result['name'], whileBody, whileEnd)
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(whileBody))
+        self.visit(ctx.getChild(5)) #body
+
+        self.Builders[-1].branch(whileCon) #redetermine cond
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(whileEnd))
+
+        self.symbolTable.exitScope()
+
+        return
+
+    def visitForBlock(self, ctx: cppLexerParser.ForBlockContext):
+        '''
+        forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
+        for3 : myID '=' expr;
+        '''
+        self.symbolTable.enterScope()
+
+        self.visit(ctx.getChild(2))
+
+        builder = self.Builders[-1]
+        forCond = builder.append_basic_block()
+        forbody = builder.append_basic_block()
+        forEnd = builder.append_basic_block()
+
+        #Cond determine
+        builder.branch(forCond)
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(forCond))
+
+        #determine whether jump to end or body
+        result = self.visit(ctx.getChild(4)) #Cond blk
+        self.Builders[-1].cbranch(result['name'], forbody, forEnd)
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(forbody))
+
+        #handle body
+        if (ctx.getChildCount() == 11):
+            self.visit(ctx.getChild(0)) #main body
+        
+        #handle step
+        self.visit(ctx.getChild(6)) #step blk
+
+        #loop once then check condition again
+        self.Builders[-1].branch(forCond)
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(forEnd))
+
+        self.symbolTable.exitScope()
+
+        return
 
 def main(argv):
     input_stream = FileStream(argv[1])

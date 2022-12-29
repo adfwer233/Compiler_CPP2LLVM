@@ -63,8 +63,9 @@ for3 : myID '=' expr;
 condition : expr;
 
 expr
-    : '(' expr ')'                                              #parens              
-    | expr op=('+' | '-' | '*' | '/' | '%') expr                #oper
+    : '(' expr ')'                                              #parens
+    | expr op=('*' | '/' | '%') expr                            #mulDiv
+    | expr op=('+' | '-') expr                                  #addSub
     | expr op=('==' | '!=' | '<' | '<=' | '>' | '>=') expr      #relop
     | op='!' expr                   #neg
     | expr '&&' expr                #and
