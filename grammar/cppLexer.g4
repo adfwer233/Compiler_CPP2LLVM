@@ -111,11 +111,16 @@ myStruct : 'struct' myID;
 structMem : (myID | myArray)'.'(myID | myArray);
 
 // todo more func
-func : (coutFunc | cinFunc);
+func : (coutFunc | cinFunc | newFunc);
 
 coutFunc : ('cout' ('<<' expr)+);
 
 cinFunc : ('cin' ('>>' expr)+);
+
+// call function
+newFunc : myID '('((argument | myID)(','(argument | myID))*)?')';
+
+argument: myInt | myDouble | myChar | myString;
 
 ID : [a-zA-Z_][0-9a-zA-Z_]*;
 

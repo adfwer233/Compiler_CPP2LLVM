@@ -49,6 +49,9 @@ class myCppVisitor(cppLexerVisitor):
         self.endIf = None
         self.Module.triple="x86_64-pc-linux"
 
+        #function list
+        self.functionDict = dict()
+
     def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
         print(ctx.myType())
         valType = self.visit(ctx.myType())
@@ -227,6 +230,7 @@ class myCppVisitor(cppLexerVisitor):
         return parameterList
 
     def visitMyFunction(self, ctx: cppLexerParser.MyFunctionContext):
+        print(ctx.myType().getText())
         returnType = self.visit(ctx.myType())
         funcName = ctx.myID().getText()
         parameterList = tuple(self.visit(ctx.params()))
@@ -238,6 +242,12 @@ class myCppVisitor(cppLexerVisitor):
         self.symbolTable.addGlobal(funcName, SymbolItem(llvmFuncType, llvmFunc))
         
         block = llvmFunc.append_basic_block(funcName)
+
+        if funcName in self.functionDict:
+            raise Exception(f"Function redefinition Error!")
+        else:
+            self.functionDict[funcName] = llvmFunc
+
         builder = ir.IRBuilder(block)
         self.Builders.append(builder)
         self.symbolTable.enterScope()
@@ -288,7 +298,9 @@ class myCppVisitor(cppLexerVisitor):
             return ir.IntType(8)
         elif text == 'double':
             return ir.DoubleType()
-
+    
+    def visitMyVoid(self, ctx: cppLexerParser.MyVoidContext):
+        return ir.VoidType()
 
     def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
         print(ctx.getText())
@@ -594,6 +606,50 @@ class myCppVisitor(cppLexerVisitor):
                 'name': res
             }
         return operandDict
+
+    # function call
+    def visitFunc(self, ctx: cppLexerParser.FuncContext):
+        '''
+        func : (coutFunc | cinFunc | newFunc);
+        '''
+        return self.visit(ctx.getChild(0))
+
+    # new definied function
+    def visitNewFunc(self, ctx: cppLexerParser.NewFuncContext):
+        '''
+        newFunc : myID '('((argument | myID)(','(argument | myID))*)?')';
+        '''
+        builder = self.Builders[-1]
+        functionName = ctx.getChild(0).getText() # get function name
+
+        if functionName in self.functionDict:
+            func = self.functionDict[functionName]
+
+            length = ctx.getChildCount()
+            paramList = []
+            i = 2
+            while i < length - 1:
+                param = self.visit(ctx.getChild(i))
+                #TODO param convert
+                paramList.append(param['name'])
+                i += 2
+            returnVar = builder.call(func, paramList)
+            res = {
+                'type': func.function_type.return_type,
+                'name': returnVar
+            }
+            return res
+        else:
+            raise Exception("Function hasn't defined!")
+
+    def visitArgument(self, ctx: cppLexerParser.ArgumentContext):
+        '''
+        argument: myInt | myDouble | myChar | myString;
+        '''
+
+        return self.visit(ctx.getChild(0))
+            
+    
 
 
 def main(argv):
