@@ -102,7 +102,22 @@ class myCppVisitor(cppLexerVisitor):
     def visitChar(self, ctx: cppLexerParser.CharContext):
         return self.visit(ctx.getChild(0))
 
-    def visitOper(self, ctx: cppLexerParser.OperContext):
+    def visitMulDiv(self, ctx: cppLexerParser.MulDivContext):
+        builder = self.Builders[-1]
+        operand1 = self.visit(ctx.getChild(0))
+        operand2 = self.visit(ctx.getChild(2))
+        if ctx.getChild(1).getText() == '*':
+            res = builder.mul(operand1['value'], operand2['value'])
+        elif ctx.getChild(1).getText() == '/':
+            res = builder.sdiv(operand1['value'], operand2['value'])
+        elif ctx.getChild(1).getText() == '%':
+            res = builder.srem(operand1['value'], operand2['value'])
+        return {
+            'type': operand1['type'],
+            'value': res
+        }
+
+    def visitAddSub(self, ctx: cppLexerParser.AddSubContext):
         print("visit operations")
         #TODO: operator priority
 
@@ -113,12 +128,6 @@ class myCppVisitor(cppLexerVisitor):
             res = builder.add(operand1['value'], operand2['value'])
         elif ctx.getChild(1).getText() == '-':
             res = builder.sub(operand1['value'], operand2['value'])
-        elif ctx.getChild(1).getText() == '*':
-            res = builder.mul(operand1['value'], operand2['value'])
-        elif ctx.getChild(1).getText() == '/':
-            res = builder.sdiv(operand1['value'], operand2['value'])
-        elif ctx.getChild(1).getText() == '%':
-            res = builder.srem(operand1['value'], operand2['value'])
         return {
             'type': operand1['type'],
             'value': res
