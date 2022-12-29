@@ -10,8 +10,9 @@ from antlr4.Token import Token
 from antlr4.Utils import escapeWhitespace
 from antlr4.tree.Tree import RuleNode, ErrorNode, TerminalNode, Tree, ParseTree
 
-from symbolTable import SymbolTable
+from symbolTable import SymbolTable, SymbolItem
 from llvmlite import ir
+from llvmlite.ir.values import GlobalVariable
 
 class MyTrees(Trees):
     def toStringTree(self, t: Tree, ruleNames: list = None, prefix='', recog: Parser = None):
@@ -41,10 +42,33 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders = []
         self.symbolTable = SymbolTable()
 
-        
+
     def visitInitBlock(self, ctx: cppLexerParser.InitBlockContext):
-        return super().visitInitBlock(ctx)
-    
+        print(ctx.myType())
+        valType = self.visit(ctx.myType())
+        for idText, expr in zip(ctx.myID(), ctx.expr()):
+            print(idText.getText(), expr.getText())
+            if self.symbolTable.get_current_level() == 0: 
+                globalVar = GlobalVariable(self.Module, valType, idText.getText())
+                globalVar.linkage = 'internal'
+                globalVar.initializer = ir.Constant(valType, expr) # TODO: add expr translation
+                self.symbolTable.addGlobal(idText.getText(), SymbolItem(valType, globalVar))
+            else:
+                builder = self.Builders[-1]
+                localVar = builder.alloca(valType, idText.getText())
+                builder.store(expr, localVar)
+                self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
+        print(self.symbolTable.table)
+
+    def visitMyType(self, ctx: cppLexerParser.MyTypeContext):
+        text = ctx.getText()
+        if text == 'int':
+            return ir.IntType(32)
+        
+
+    def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
+        print(ctx.getText())
+        return super().visitMyInt(ctx)
 
 def main(argv):
     input_stream = FileStream(argv[1])
@@ -56,6 +80,8 @@ def main(argv):
     mytree = MyTrees()
     print(mytree.toStringTree(tree, None, '***', parser))
 
+    visitor = myCppVisitor()
+    visitor.visit(tree)
     # # stream.getText()
     # stream.fill()
     # for token in stream.tokens:

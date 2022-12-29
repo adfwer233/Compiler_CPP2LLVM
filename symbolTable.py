@@ -1,6 +1,6 @@
 class SymbolItem:
 
-    def __init__(self, type, value, scopeLevel: int):
+    def __init__(self, type, value, scopeLevel: int = 0):
         self.type = type
         self.value = value
         self.scopeLevel = scopeLevel
@@ -30,26 +30,27 @@ class SymbolTable:
         if name in self.table[0].keys():
             raise Exception("global name item exist")
         item.scopeLevel = 0
+        print(name)
         self.table[0][name] = item
     
     def addLocal(self, name: str, item: SymbolItem):
         if name in self.table[-1].keys():
             raise Exception("local name item exist")
-        item.scopeLevel = self._get_current_level()
+        item.scopeLevel = self.get_current_level()
         self.table[-1][name] = item
 
     def getSymbolItem(self, name: str):
-        for i in range(self._get_current_level(), -1, -1):
+        for i in range(self.get_current_level(), -1, -1):
             if name in self.table[i].keys():
                 return self.table[i][name]
         raise Exception(f"no item {name} in symbol item")
 
     def setSymbolItem(self, name: str, value):
-        for i in range(self._get_current_level(), -1, -1):
+        for i in range(self.get_current_level(), -1, -1):
             if name in self.table[i].keys():
                 self.table[i][name].set_value(value)
                 return
         raise Exception(f"no item {name} in symbol item")
 
-    def _get_current_level(self):
+    def get_current_level(self):
         return len(self.table) - 1
