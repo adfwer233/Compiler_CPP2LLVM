@@ -1,0 +1,80 @@
+; ModuleID = ""
+target triple = "x86_64-pc-linux"
+target datalayout = ""
+
+declare i32 @"printf"(i8* %".1", ...)
+
+declare i32 @"scanf"(i8* %".1", ...)
+
+define i32 @"main"()
+{
+main:
+  %"len" = alloca i32
+  store i32 0, i32* %"len"
+  %".3" = getelementptr inbounds [3 x i8], [3 x i8]* @".str0", i32 0, i32 0
+  %".4" = call i32 (i8*, ...) @"scanf"(i8* %".3", i32* %"len")
+  %"stringc" = alloca [50 x i8]
+  %".5" = getelementptr inbounds [3 x i8], [3 x i8]* @".str1", i32 0, i32 0
+  %".6" = call i32 (i8*, ...) @"scanf"(i8* %".5", [50 x i8]* %"stringc")
+  %"IsPLD" = alloca i32
+  store i32 0, i32* %"IsPLD"
+  %"i" = alloca i32
+  store i32 0, i32* %"i"
+  store i32 0, i32* %"i"
+  br label %".10"
+.10:
+  %".14" = load i32, i32* %"i"
+  %".15" = load i32, i32* %"i"
+  %".16" = add i32 %".14", %".15"
+  %".17" = load i32, i32* %"len"
+  %".18" = icmp slt i32 %".16", %".17"
+  %".19" = load i32, i32* %"IsPLD"
+  %".20" = icmp ne i32 %".19", 1
+  %".21" = and i1 %".18", %".20"
+  br i1 %".21", label %".11", label %".12"
+.11:
+  br label %".23"
+.12:
+  br label %".48"
+.23:
+  %".28" = load i32, i32* %"len"
+  %".29" = sub i32 %".28", 1
+  %".30" = load i32, i32* %"i"
+  %".31" = sub i32 %".29", %".30"
+  %".32" = getelementptr inbounds [50 x i8], [50 x i8]* %"stringc", i32 0, i32 %".31"
+  %".33" = load i8, i8* %".32"
+  %".34" = load i32, i32* %"i"
+  %".35" = getelementptr inbounds [50 x i8], [50 x i8]* %"stringc", i32 0, i32 %".34"
+  %".36" = load i8, i8* %".35"
+  %".37" = icmp ne i8 %".33", %".36"
+  br i1 %".37", label %".26", label %".27"
+.24:
+  %".44" = load i32, i32* %"i"
+  %".45" = add i32 %".44", 1
+  store i32 %".45", i32* %"i"
+  br label %".10"
+.26:
+  %".39" = getelementptr inbounds [6 x i8], [6 x i8]* @".str2", i32 0, i32 0
+  %".40" = call i32 (i8*, ...) @"printf"(i8* %".39")
+  store i32 1, i32* %"IsPLD"
+  br label %".24"
+.27:
+  br label %".24"
+.48:
+  %".53" = load i32, i32* %"IsPLD"
+  %".54" = icmp eq i32 %".53", 0
+  br i1 %".54", label %".51", label %".52"
+.49:
+  ret i32 0
+.51:
+  %".56" = getelementptr inbounds [5 x i8], [5 x i8]* @".str3", i32 0, i32 0
+  %".57" = call i32 (i8*, ...) @"printf"(i8* %".56")
+  br label %".49"
+.52:
+  br label %".49"
+}
+
+@".str0" = constant [3 x i8] c"%d\00"
+@".str1" = constant [3 x i8] c"%s\00"
+@".str2" = constant [6 x i8] c"False\00"
+@".str3" = constant [5 x i8] c"True\00"

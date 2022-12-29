@@ -1,9 +1,9 @@
 import sys
 from antlr4 import *
 from antlr4.tree.Trees import Trees
-from src.grammar.cppLexerLexer import cppLexerLexer
-from src.grammar.cppLexerParser import cppLexerParser
-from src.grammar.cppLexerVisitor import cppLexerVisitor
+from src.grammar.SimpleCppLexer import SimpleCppLexer
+from src.grammar.SimpleCppParser import SimpleCppParser
+from src.grammar.SimpleCppVisitor import SimpleCppVisitor
 
 from io import StringIO
 from antlr4.Token import Token
@@ -34,9 +34,9 @@ class MyTrees(Trees):
             buf.write(' ')
             return buf.getvalue()
 
-class myCppVisitor(cppLexerVisitor):
+class myCppVisitor(SimpleCppVisitor):
     def __init__(self):
-        super(cppLexerVisitor, self).__init__()
+        super(SimpleCppVisitor, self).__init__()
 
         self.Module = ir.Module()
         self.Builders = []
@@ -53,7 +53,7 @@ class myCppVisitor(cppLexerVisitor):
         self.functionDict = dict()
 
         self.strConstIndex = 0
-    def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
+    def visitInitVarBlock(self, ctx: SimpleCppParser.InitVarBlockContext):
         valType = self.visit(ctx.myType())
         for idText, expr in zip(ctx.myID(), ctx.expr()):
             exprRes = self.visit(expr)
@@ -69,7 +69,7 @@ class myCppVisitor(cppLexerVisitor):
                 self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
         return
     
-    def visitAssignBlock(self, ctx: cppLexerParser.AssignBlockContext):
+    def visitAssignBlock(self, ctx: SimpleCppParser.AssignBlockContext):
 
         # TODO: add array assign
         tmploadParam = self.loadParam
@@ -81,7 +81,7 @@ class myCppVisitor(cppLexerVisitor):
         exprRes = self.visit(ctx.expr())
         builder.store(exprRes['value'], leftRes['value'])
 
-    def visitInitArrayBlock(self, ctx:cppLexerParser.InitArrayBlockContext):
+    def visitInitArrayBlock(self, ctx:SimpleCppParser.InitArrayBlockContext):
         # initArrayBlock : myType myID '[' myInt ']'('=' '[' expr (',' expr)* ']')?';';
         type = self.visit(ctx.getChild(0))
         ID = ctx.getChild(1).getText()
@@ -108,7 +108,7 @@ class myCppVisitor(cppLexerVisitor):
                 childToVisit += 2
                 index += 1
         return
-    def visitInt(self, ctx: cppLexerParser.IntContext):
+    def visitInt(self, ctx: SimpleCppParser.IntContext):
         if ctx.getChild(0).getText() == '-':
             intRes = self.visit(ctx.getChild(1))
             builder = self.Builders[-1]
@@ -119,7 +119,7 @@ class myCppVisitor(cppLexerVisitor):
             }
         return self.visit(ctx.getChild(0))
     
-    def visitDouble(self, ctx:cppLexerParser.DoubleContext):
+    def visitDouble(self, ctx:SimpleCppParser.DoubleContext):
         if ctx.getChild(0).getText() == '-':
             intRes = self.visit(ctx.getChild(1))
             builder = self.Builders[-1]
@@ -130,11 +130,11 @@ class myCppVisitor(cppLexerVisitor):
             }
         return self.visit(ctx.getChild(0))
 
-    def visitChar(self, ctx: cppLexerParser.CharContext):
+    def visitChar(self, ctx: SimpleCppParser.CharContext):
         return self.visit(ctx.getChild(0))
 
 
-    def visitMulDiv(self, ctx: cppLexerParser.MulDivContext):
+    def visitMulDiv(self, ctx: SimpleCppParser.MulDivContext):
         builder = self.Builders[-1]
         operand1 = self.visit(ctx.getChild(0))
         operand2 = self.visit(ctx.getChild(2))
@@ -149,7 +149,7 @@ class myCppVisitor(cppLexerVisitor):
             'value': res
         }
 
-    def visitAddSub(self, ctx: cppLexerParser.AddSubContext):
+    def visitAddSub(self, ctx: SimpleCppParser.AddSubContext):
         print("visit operations")
         #TODO: operator priority
 
@@ -167,7 +167,7 @@ class myCppVisitor(cppLexerVisitor):
             'value': res
         }
     
-    def visitRelop(self, ctx: cppLexerParser.RelopContext):
+    def visitRelop(self, ctx: SimpleCppParser.RelopContext):
         print("visit relop", ctx.getChild(1).getText())
         builder = self.Builders[-1]
         operand1 = self.visit(ctx.getChild(0))
@@ -180,7 +180,7 @@ class myCppVisitor(cppLexerVisitor):
             'value': res
         }
 
-    def visitAnd(self, ctx: cppLexerParser.AndContext):
+    def visitAnd(self, ctx: SimpleCppParser.AndContext):
         operand1 = self.exprToBool(self.visit(ctx.getChild(0)))
         operand2 = self.exprToBool(self.visit(ctx.getChild(2)))
         builder = self.Builders[-1]
@@ -190,7 +190,7 @@ class myCppVisitor(cppLexerVisitor):
             'value': res
         }
 
-    def visitOr(self, ctx: cppLexerParser.OrContext):
+    def visitOr(self, ctx: SimpleCppParser.OrContext):
         operand1 = self.exprToBool(self.visit(ctx.getChild(0)))
         operand2 = self.exprToBool(self.visit(ctx.getChild(2)))
         builder = self.Builders[-1]
@@ -200,10 +200,10 @@ class myCppVisitor(cppLexerVisitor):
             'value': res
         }
 
-    def visitParens(self, ctx: cppLexerParser.ParensContext):
+    def visitParens(self, ctx: SimpleCppParser.ParensContext):
         return self.visit(ctx.getChild(0))
 
-    def visitBool(self, ctx:cppLexerParser.BoolContext):
+    def visitBool(self, ctx:SimpleCppParser.BoolContext):
         if ctx.getText() == 'true':
             return {
                 'type': ir.IntType(1),
@@ -215,10 +215,10 @@ class myCppVisitor(cppLexerVisitor):
                 'value': ir.Constant(ir.IntType(1), 0)
             }
 
-    def visitIdentifier(self, ctx: cppLexerParser.IdentifierContext):
+    def visitIdentifier(self, ctx: SimpleCppParser.IdentifierContext):
         return self.visit(ctx.getChild(0))
 
-    def visitParams(self, ctx: cppLexerParser.ParamsContext):
+    def visitParams(self, ctx: SimpleCppParser.ParamsContext):
         parameterList = []
         for param in ctx.param():
             if param.DOTS() is None:
@@ -230,7 +230,7 @@ class myCppVisitor(cppLexerVisitor):
         return parameterList
 
 
-    def visitMyFunctionDecl(self, ctx: cppLexerParser.MyFunctionDeclContext):
+    def visitMyFunctionDecl(self, ctx: SimpleCppParser.MyFunctionDeclContext):
         returnType = self.visit(ctx.myType())
         funcName = ctx.myID().getText()
         parameterList = tuple(self.visit(ctx.params()))
@@ -254,7 +254,7 @@ class myCppVisitor(cppLexerVisitor):
         else:
             self.functionDict[funcName] = llvmFunc
 
-    def visitMyFunction(self, ctx: cppLexerParser.MyFunctionContext):
+    def visitMyFunction(self, ctx: SimpleCppParser.MyFunctionContext):
         print(ctx.getText())
         print(ctx.myType().getText())
         returnType = self.visit(ctx.myType())
@@ -291,7 +291,7 @@ class myCppVisitor(cppLexerVisitor):
         
         return functionReturn
 
-    def visitReturnBlock(self, ctx: cppLexerParser.returnBlock):
+    def visitReturnBlock(self, ctx: SimpleCppParser.returnBlock):
         builder = self.Builders[-1]
         if ctx.getChildCount() == 2:
             res = builder.ret_void()
@@ -307,14 +307,14 @@ class myCppVisitor(cppLexerVisitor):
                 'value': res
             }
 
-    def visitMyBlock(self, ctx: cppLexerParser.MyBlockContext):
+    def visitMyBlock(self, ctx: SimpleCppParser.MyBlockContext):
         self.symbolTable.enterScope()
         super().visitMyBlock(ctx)
         self.symbolTable.exitScope()
         print("testasdf")
         return
 
-    def visitMyType(self, ctx: cppLexerParser.MyTypeContext):
+    def visitMyType(self, ctx: SimpleCppParser.MyTypeContext):
         text = ctx.getText()
         if text == 'int':
             return ir.IntType(32)
@@ -329,23 +329,23 @@ class myCppVisitor(cppLexerVisitor):
         elif text == 'void':
             return ir.VoidType()
     
-    def visitMyVoid(self, ctx: cppLexerParser.MyVoidContext):
+    def visitMyVoid(self, ctx: SimpleCppParser.MyVoidContext):
         return ir.VoidType()
 
-    def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
+    def visitMyInt(self, ctx: SimpleCppParser.MyIntContext):
         print("visit int", ctx.getText())
         return {
             'type': ir.IntType(32),
             'value': ir.Constant(ir.IntType(32), int(ctx.getText()))
         }
 
-    def visitMyDouble(self, ctx: cppLexerParser.MyDoubleContext):
+    def visitMyDouble(self, ctx: SimpleCppParser.MyDoubleContext):
         return {
             'type': ir.DoubleType(),
             'value': ir.Constant(ir.DoubleType(), float(ctx.getText()))
         }
 
-    def visitMyID(self, ctx: cppLexerParser.MyIDContext):
+    def visitMyID(self, ctx: SimpleCppParser.MyIDContext):
         idName = ctx.getText()
         item = self.symbolTable.getSymbolItem(idName)
         builder = self.Builders[-1]
@@ -361,28 +361,28 @@ class myCppVisitor(cppLexerVisitor):
                 'value': item.get_value()
             }
     
-    def visitRefId(self, ctx: cppLexerParser.RefIdContext):
+    def visitRefId(self, ctx: SimpleCppParser.RefIdContext):
         tmploadParam = self.loadParam
         self.loadParam = False
         res = self.visit(ctx.myID())
         self.loadParam = tmploadParam
         return res
 
-    def visitRefArray(self, ctx: cppLexerParser.RefArrayContext):
+    def visitRefArray(self, ctx: SimpleCppParser.RefArrayContext):
         tmploadParam = self.loadParam
         self.loadParam = False
         res = self.visit(ctx.myArray())
         self.loadParam = tmploadParam
         return res
 
-    def visitMyChar(self, ctx: cppLexerParser.MyCharContext):
+    def visitMyChar(self, ctx: SimpleCppParser.MyCharContext):
         print("my char " * 5)
         return {
             'type': ir.IntType(8),
             'value': ir.Constant(ir.IntType(8), ord(ctx.getText()[1]))
         }
 
-    def visitMyArray(self, ctx: cppLexerParser.MyArrayContext):
+    def visitMyArray(self, ctx: SimpleCppParser.MyArrayContext):
         tmploadParam = self.loadParam
         self.loadParam = False
         res = self.visit(ctx.getChild(0))  # identifier
@@ -406,13 +406,13 @@ class myCppVisitor(cppLexerVisitor):
                 'value': returnRes,
             }
 
-    def visitCondition(self, ctx: cppLexerParser.ConditionContext):
+    def visitCondition(self, ctx: SimpleCppParser.ConditionContext):
         print("visit condition")
         result = self.visit(ctx.getChild(0)) #cond
         return self.exprToBool(result)
 
 
-    def visitIfBlock(self, ctx: cppLexerParser.IfBlockContext):
+    def visitIfBlock(self, ctx: SimpleCppParser.IfBlockContext):
         '''
         ifBlock : myIf (myElif)* (myElse)?;
         '''
@@ -444,7 +444,7 @@ class myCppVisitor(cppLexerVisitor):
 
         return
 
-    def visitMyIf(self, ctx: cppLexerParser.MyIfContext):
+    def visitMyIf(self, ctx: SimpleCppParser.MyIfContext):
         '''
         myIf : 'if' '(' condition ')' myBlock;
         '''
@@ -474,7 +474,7 @@ class myCppVisitor(cppLexerVisitor):
 
         return
 
-    def visitMyElif(self, ctx: cppLexerParser.MyElifContext):
+    def visitMyElif(self, ctx: SimpleCppParser.MyElifContext):
         '''
         myElif : 'else' 'if' '(' condition ')' block;
         '''
@@ -504,7 +504,7 @@ class myCppVisitor(cppLexerVisitor):
 
         return
 
-    def visitMyElse(self, ctx: cppLexerParser.MyElseContext):
+    def visitMyElse(self, ctx: SimpleCppParser.MyElseContext):
         '''
         myElse : 'else' myBlock;
         '''
@@ -516,7 +516,7 @@ class myCppVisitor(cppLexerVisitor):
 
         return
     
-    def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
+    def visitWhileBlock(self, ctx: SimpleCppParser.WhileBlockContext):
         # whileBlock : 'while' '(' condition ')' myBlock;
         self.symbolTable.enterScope()
         builder = self.Builders[-1]
@@ -547,7 +547,7 @@ class myCppVisitor(cppLexerVisitor):
 
         return
 
-    def visitForBlock(self, ctx: cppLexerParser.ForBlockContext):
+    def visitForBlock(self, ctx: SimpleCppParser.ForBlockContext):
         '''
         forBlock : 'for' '(' for1 ';' condition ';' for3 ')' myblock;
         '''
@@ -589,7 +589,7 @@ class myCppVisitor(cppLexerVisitor):
 
         return
 
-    def visitFor1(self, ctx: cppLexerParser.For1Context):
+    def visitFor1(self, ctx: SimpleCppParser.For1Context):
         '''
         for1 : myID '=' expr (',' for1)?|;
         '''
@@ -612,7 +612,7 @@ class myCppVisitor(cppLexerVisitor):
         
         return
     
-    def visitFor3(self, ctx: cppLexerParser.For3Context):
+    def visitFor3(self, ctx: SimpleCppParser.For3Context):
         '''
         for3 : myID '=' expr (',' for3)?|;
         '''
@@ -657,14 +657,14 @@ class myCppVisitor(cppLexerVisitor):
         }
 
     # function call
-    def visitFunc(self, ctx: cppLexerParser.FuncContext):
+    def visitFunc(self, ctx: SimpleCppParser.FuncContext):
         '''
         func : (coutFunc | cinFunc | newFunc);
         '''
         return self.visit(ctx.getChild(0))
 
     # new definied function
-    def visitNewFunc(self, ctx: cppLexerParser.NewFuncContext):
+    def visitNewFunc(self, ctx: SimpleCppParser.NewFuncContext):
         '''
         newFunc : myID '('((argument | myID)(','(argument | myID))*)?')';
         '''
@@ -691,14 +691,14 @@ class myCppVisitor(cppLexerVisitor):
         else:
             raise Exception("Function hasn't defined!")
 
-    def visitArgument(self, ctx: cppLexerParser.ArgumentContext):
+    def visitArgument(self, ctx: SimpleCppParser.ArgumentContext):
         '''
         argument: myInt | myDouble | myChar | myString;
         '''
 
         return self.visit(ctx.getChild(0))
     
-    def visitMyString(self, ctx: cppLexerParser.MyStringContext):
+    def visitMyString(self, ctx: SimpleCppParser.MyStringContext):
         processedString = ctx.getText().replace('\\n', '\n')
         processedString = processedString[1:-1]
         processedString += '\0'
@@ -713,14 +713,16 @@ class myCppVisitor(cppLexerVisitor):
         }
         return self.arrayToPoint(resDict)
     
-    def visitString(self, ctx: cppLexerParser.StringContext):
+    def visitString(self, ctx: SimpleCppParser.StringContext):
         return self.visit(ctx.getChild(0))
+
 def main(argv):
     input_stream = FileStream(argv[1])
-    lexer = cppLexerLexer(input_stream)
+    outputFile = argv[2]
+    lexer = SimpleCppLexer(input_stream)
     stream = CommonTokenStream(lexer)
 
-    parser = cppLexerParser(stream)
+    parser = SimpleCppParser(stream)
     tree = parser.prog()
     mytree = MyTrees()
     print(mytree.toStringTree(tree, None, '***', parser))
@@ -736,7 +738,7 @@ def main(argv):
 
     print(ll)
 
-    with open("./res.ll", 'w') as f:
+    with open(outputFile, 'w') as f:
         f.write(ll)
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-grammar cppLexer;
+grammar SimpleCpp;
 
 True_: 'true';
 
