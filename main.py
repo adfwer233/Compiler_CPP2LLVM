@@ -149,6 +149,41 @@ class myCppVisitor(cppLexerVisitor):
             'value': res
         }
 
+    def visitAnd(self, ctx: cppLexerParser.AndContext):
+        operand1 = self.exprToBool(self.visit(ctx.getChild(0)))
+        operand2 = self.exprToBool(self.visit(ctx.getChild(2)))
+        builder = self.Builders[-1]
+        res = builder.and_(operand1['value'], operand2['value'])
+        return {
+            'type': ir.IntType(1),
+            'value': res
+        }
+
+    def visitOr(self, ctx: cppLexerParser.OrContext):
+        operand1 = self.exprToBool(self.visit(ctx.getChild(0)))
+        operand2 = self.exprToBool(self.visit(ctx.getChild(2)))
+        builder = self.Builders[-1]
+        res = builder.or_(operand1['value'], operand2['value'])
+        return {
+            'type': ir.IntType(1),
+            'value': res
+        }
+
+    def visitParens(self, ctx: cppLexerParser.ParensContext):
+        return self.visit(ctx.getChild(0))
+
+    def visitBool(self, ctx:cppLexerParser.BoolContext):
+        if ctx.getText() == 'true':
+            return {
+                'type': ir.IntType(1),
+                'value': ir.Constant(ir.IntType(1), 1)
+            }
+        else:
+            return {
+                'type': ir.IntType(1),
+                'value': ir.Constant(ir.IntType(1), 0)
+            }
+
     def visitIdentifier(self, ctx: cppLexerParser.IdentifierContext):
         return self.visit(ctx.getChild(0))
 
@@ -480,6 +515,20 @@ class myCppVisitor(cppLexerVisitor):
         if length > 3:
             self.visit(ctx.getChild(4))
         return
+
+
+    # functions for type cast
+
+    def exprToBool(self, operandDict):
+        operandType = operandDict['type']
+        builder = self.Builders[-1]
+        if operandType in [ir.IntType(8), ir.IntType(32)]:
+            res = builder.icmp_signed('==', operandDict['value'], ir.Constant(operandType, 0))
+            return {
+                'type': ir.IntType(1),
+                'name': res
+            }
+        return operandDict
 
 
 def main(argv):

@@ -1,5 +1,11 @@
 grammar cppLexer;
 
+True_: 'true';
+
+False_: 'false';
+
+boolLiteral: False_ | True_;
+
 prog : (include)* (myNamespace)* (myFunction | initVarBlock | initArrayBlock | structBlock)*;
 
 //include
@@ -36,7 +42,8 @@ statement:
     | whileBlock 
     | forBlock
     | expr? ';'
-    | myBlock;
+    | myBlock
+    ;
 
 //初始化
 initVarBlock : myType myID ('=' expr) ? (',' myID ('=' expr)?)* ';';
@@ -78,6 +85,7 @@ expr
     | myID                          #identifier
     | structMem                     #structmember
     | func                          #function
+    | boolLiteral                   #bool
     ;
 
 //todo more buildin
@@ -137,3 +145,4 @@ LineComment: '//' ~ [\r\n]* -> skip;
 LBRACE: '{';
 
 RBRACE: '}';
+
