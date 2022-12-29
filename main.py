@@ -60,6 +60,10 @@ class myCppVisitor(cppLexerVisitor):
                 self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
         print(self.symbolTable.table)
 
+    def visitAssignBlock(self, ctx: cppLexerParser.AssignBlockContext):
+        
+        pass
+
     def visitMyType(self, ctx: cppLexerParser.MyTypeContext):
         text = ctx.getText()
         if text == 'int':
@@ -82,6 +86,8 @@ def main(argv):
 
     visitor = myCppVisitor()
     visitor.visit(tree)
+
+    print(str(visitor.Module))
     # # stream.getText()
     # stream.fill()
     # for token in stream.tokens:
