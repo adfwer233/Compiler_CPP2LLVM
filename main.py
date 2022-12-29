@@ -432,7 +432,6 @@ class myCppVisitor(cppLexerVisitor):
     def visitForBlock(self, ctx: cppLexerParser.ForBlockContext):
         '''
         forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
-        for3 : myID '=' expr;
         '''
         self.symbolTable.enterScope()
 
