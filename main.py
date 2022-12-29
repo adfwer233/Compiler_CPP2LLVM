@@ -316,7 +316,7 @@ class myCppVisitor(cppLexerVisitor):
 
         #handle endifblock
         tmpendif = self.endIf
-        self.endIf - endifblock
+        self.endIf = endifblock
 
         length = ctx.getChildCount()
         for i in range(length):
@@ -326,7 +326,7 @@ class myCppVisitor(cppLexerVisitor):
 
         #if finish route to endif block
         tmpbuilder = self.Builders.pop()
-        if not tmpbuilder.is_terminated:
+        if not tmpbuilder.block.is_terminated:
             tmpbuilder.branch(endifblock)
 
         self.Builders.append(ir.IRBuilder(endifblock))
@@ -335,7 +335,7 @@ class myCppVisitor(cppLexerVisitor):
 
     def visitMyIf(self, ctx: cppLexerParser.MyIfContext):
         '''
-        myIf : 'if' '(' condition ')' '{' myBody '}';
+        myIf : 'if' '(' condition ')' myBlock;
         '''
         self.symbolTable.enterScope()
 
@@ -351,9 +351,9 @@ class myCppVisitor(cppLexerVisitor):
         #condition true body
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(trueblk))
-        self.visit(ctx.getChild(5)) # body
+        self.visit(ctx.getChild(4)) # body
 
-        if not self.Builders[-1].is_terminated:
+        if not self.Builders[-1].block.is_terminated:
             self.Builders[-1].branch(self.endIf)
         
         #handle condition false
@@ -365,7 +365,7 @@ class myCppVisitor(cppLexerVisitor):
 
     def visitMyElif(self, ctx: cppLexerParser.MyElifContext):
         '''
-        myElif : 'else' 'if' '(' condition ')' '{' myBody '}';
+        myElif : 'else' 'if' '(' condition ')' block;
         '''
         # same as if there are false and true block
         self.symbolTable.enterScope()
@@ -380,9 +380,9 @@ class myCppVisitor(cppLexerVisitor):
         #condition true -> trueblk
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(trueblk))
-        self.visit(ctx.getChild(6)) # body
+        self.visit(ctx.getChild(5)) # body
 
-        if not self.Builders[-1].is_terminated:
+        if not self.Builders[-1].block.is_terminated:
             self.Builders[-1].branch(self.endIf)
 
         #condition false
@@ -395,12 +395,12 @@ class myCppVisitor(cppLexerVisitor):
 
     def visitMyElse(self, ctx: cppLexerParser.MyElseContext):
         '''
-        myElse : 'else' '{' myBody '}';
+        myElse : 'else' myBlock;
         '''
 
         #directly handle mybody
         self.symbolTable.enterScope()
-        self.visit(ctx.getChild(2)) # body
+        self.visit(ctx.getChild(1)) # body
         self.symbolTable.exitScope()
 
         return
