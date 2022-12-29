@@ -406,7 +406,7 @@ class myCppVisitor(cppLexerVisitor):
         return
     
     def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
-        # whileBlock : 'while' '(' condition ')' '{' myBody '}';
+        # whileBlock : 'while' '(' condition ')' myBlock;
         self.symbolTable.enterScope()
         builder = self.Builders[-1]
 
@@ -424,7 +424,8 @@ class myCppVisitor(cppLexerVisitor):
 
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(whileBody))
-        self.visit(ctx.getChild(5)) #body
+        print(ctx.getChild(4).getText())
+        self.visit(ctx.getChild(4)) #body
 
         self.Builders[-1].branch(whileCon) #redetermine cond
 
