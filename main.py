@@ -143,6 +143,49 @@ class myCppVisitor(cppLexerVisitor):
 
         return
 
+    def visitForBlock(self, ctx: cppLexerParser.ForBlockContext):
+        '''
+        forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
+        for1 : (myType)? myID '=' expr;
+        for3 : myID '=' expr;
+        '''
+        self.symbolTable.enterScope()
+
+        self.visit(ctx.getChild(2))
+
+        builder = self.Builders[-1]
+        forCond = builder.append_basic_block()
+        forbody = builder.append_basic_block()
+        forEnd = builder.append_basic_block()
+
+        #Cond determine
+        builder.branch(forCond)
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(forCond))
+
+        #determine whether jump to end or body
+        result = self.visit(ctx.getChild(4)) #Cond blk
+        self.Builders[-1].cbranch(result['name'], forbody, forEnd)
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(forbody))
+
+        #handle body
+        if (ctx.getChildCount() == 11):
+            self.visit(ctx.getChild(0)) #main body
+        
+        #handle step
+        self.visit(ctx.getChild(6)) #step blk
+
+        #loop once then check condition again
+        self.Builders[-1].branch(forCond)
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(forEnd))
+
+        self.symbolTable.exitScope()
+
+        return
+
 def main(argv):
     input_stream = FileStream(argv[1])
     lexer = cppLexerLexer(input_stream)
