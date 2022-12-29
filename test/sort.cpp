@@ -1,12 +1,14 @@
-#include <iostream>
-#include <cstring>
-using namespace std;
+int printf(char* a, ...);
+int scanf(char* a, ...);
+
+//#include "stdio.h"
 
 int arr[50];
-int maxlen;
+int maxlen = 0;
 
 void QuickSort(int low, int high)
 {
+    printf("%d %d\n", low, high);
     if (low < high)
     {
         int i = low;
@@ -16,22 +18,24 @@ void QuickSort(int low, int high)
         {
             while (i < j && arr[j] >= k)
             {
-                j--;
+                j = j - 1;
             }
 
             if (i < j)
             {
-                arr[i++] = arr[j];
+                arr[i] = arr[j];
+                i = i + 1;
             }
 
             while (i < j && arr[i] < k)
             {
-                i++;
+                i = i + 1;
             }
 
             if (i < j)
             {
-                arr[j--] = arr[i];
+                arr[j] = arr[i];
+                j = j - 1;
             }
         }
 
@@ -43,18 +47,24 @@ void QuickSort(int low, int high)
 
 int main()
 {
-    cin >> maxlen;
-    int i = 0, j = 0, t = 0;
+    scanf("%d", &maxlen);
+    int i = 0;
+    int j = 0;
+    int t = 0;
     for (i = 0; i < maxlen; i = i + 1)
     {
-        cin >> arr[i];
+        scanf("%d", &arr[i]);
     }
-
+    for (i = 0; i < maxlen; i=i+1)
+    {
+        printf("%d ", arr[i]);
+    }
+    printf("\n")
     QuickSort(0, maxlen - 1);
 
-    for (i = 0; i < maxlen; i++)
+    for (i = 0; i < maxlen; i=i+1)
     {
-        cout << arr[i] << " ";
+        printf("%d ", arr[i]);
     }
 
     return 0;

@@ -52,12 +52,11 @@ class myCppVisitor(cppLexerVisitor):
         #function list
         self.functionDict = dict()
 
+        self.strConstIndex = 0
     def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
-        print(ctx.myType())
         valType = self.visit(ctx.myType())
         for idText, expr in zip(ctx.myID(), ctx.expr()):
             exprRes = self.visit(expr)
-            print(idText.getText(), expr.getText(), exprRes['value'])
             if self.symbolTable.get_current_level() == 0: 
                 globalVar = GlobalVariable(self.Module, valType, idText.getText())
                 globalVar.linkage = 'internal'
@@ -68,12 +67,9 @@ class myCppVisitor(cppLexerVisitor):
                 localVar = builder.alloca(valType, name = idText.getText())
                 builder.store(exprRes['value'], localVar)
                 self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
-        print(self.symbolTable.table)
         return
     
     def visitAssignBlock(self, ctx: cppLexerParser.AssignBlockContext):
-        print(ctx.getChild(0).getText())
-        print("assign block")
 
         # TODO: add array assign
         tmploadParam = self.loadParam
@@ -111,11 +107,9 @@ class myCppVisitor(cppLexerVisitor):
                 builder.store(valueToStore, address)
                 childToVisit += 2
                 index += 1
-        print(self.symbolTable.table)
         return
     def visitInt(self, ctx: cppLexerParser.IntContext):
-        print("visit Int")
-        if ctx.getChild(0).getText == '-':
+        if ctx.getChild(0).getText() == '-':
             intRes = self.visit(ctx.getChild(1))
             builder = self.Builders[-1]
             res = builder.neg(intRes['value'])
@@ -126,7 +120,7 @@ class myCppVisitor(cppLexerVisitor):
         return self.visit(ctx.getChild(0))
     
     def visitDouble(self, ctx:cppLexerParser.DoubleContext):
-        if ctx.getChild(0).getText == '-':
+        if ctx.getChild(0).getText() == '-':
             intRes = self.visit(ctx.getChild(1))
             builder = self.Builders[-1]
             res = builder.neg(intRes['value'])
@@ -138,6 +132,7 @@ class myCppVisitor(cppLexerVisitor):
 
     def visitChar(self, ctx: cppLexerParser.CharContext):
         return self.visit(ctx.getChild(0))
+
 
     def visitMulDiv(self, ctx: cppLexerParser.MulDivContext):
         builder = self.Builders[-1]
@@ -161,6 +156,8 @@ class myCppVisitor(cppLexerVisitor):
         builder = self.Builders[-1]
         operand1 = self.visit(ctx.getChild(0))
         operand2 = self.visit(ctx.getChild(2))
+        print("????" * 10, ctx.getChild(0).getText(), ctx.getChild(2).getText())
+        print(ctx.getText())
         if ctx.getChild(1).getText() == '+':
             res = builder.add(operand1['value'], operand2['value'])
         elif ctx.getChild(1).getText() == '-':
@@ -224,12 +221,41 @@ class myCppVisitor(cppLexerVisitor):
     def visitParams(self, ctx: cppLexerParser.ParamsContext):
         parameterList = []
         for param in ctx.param():
-            paramType = self.visit(param.myType())
-            paramID = param.myID().getText()
-            parameterList.append((paramType, paramID))
+            if param.DOTS() is None:
+                paramType = self.visit(param.myType())
+                paramID = param.myID().getText()
+                parameterList.append((paramType, paramID))
+            else:
+                parameterList.append(("varargs", "varargs"))
         return parameterList
 
+
+    def visitMyFunctionDecl(self, ctx: cppLexerParser.MyFunctionDeclContext):
+        returnType = self.visit(ctx.myType())
+        funcName = ctx.myID().getText()
+        parameterList = tuple(self.visit(ctx.params()))
+        parameterTypeList = tuple(param[0] for param in parameterList)
+        is_vararg = "varargs" in parameterTypeList
+        print(parameterTypeList)
+        if is_vararg:
+            if parameterTypeList.count("varargs") > 1:
+                raise Exception("too many varargs")
+            elif parameterTypeList[-1] != "varargs":
+                raise Exception("varargs should be last param")
+            parameterTypeList = parameterTypeList[:-1]
+        print("asfdasfasdfasdf")
+        
+        llvmFuncType = ir.FunctionType(returnType, parameterTypeList, var_arg=is_vararg)
+        llvmFunc = ir.Function(self.Module, llvmFuncType, funcName)
+        self.symbolTable.addGlobal(funcName, SymbolItem(llvmFuncType, llvmFunc))
+
+        if funcName in self.functionDict:
+            raise Exception(f"Function redefinition Error!")
+        else:
+            self.functionDict[funcName] = llvmFunc
+
     def visitMyFunction(self, ctx: cppLexerParser.MyFunctionContext):
+        print(ctx.getText())
         print(ctx.myType().getText())
         returnType = self.visit(ctx.myType())
         funcName = ctx.myID().getText()
@@ -298,12 +324,16 @@ class myCppVisitor(cppLexerVisitor):
             return ir.IntType(8)
         elif text == 'double':
             return ir.DoubleType()
+        elif text == 'char*':
+            return ir.PointerType(ir.IntType(8))
+        elif text == 'void':
+            return ir.VoidType()
     
     def visitMyVoid(self, ctx: cppLexerParser.MyVoidContext):
         return ir.VoidType()
 
     def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
-        print(ctx.getText())
+        print("visit int", ctx.getText())
         return {
             'type': ir.IntType(32),
             'value': ir.Constant(ir.IntType(32), int(ctx.getText()))
@@ -320,7 +350,7 @@ class myCppVisitor(cppLexerVisitor):
         item = self.symbolTable.getSymbolItem(idName)
         builder = self.Builders[-1]
         print(item.get_type())
-        if self.loadParam == True:
+        if self.loadParam == True and not isinstance(item.get_type(), ir.types.ArrayType):
             return {
                 'type': item.get_type(),
                 'value': builder.load(item.get_value())
@@ -330,6 +360,20 @@ class myCppVisitor(cppLexerVisitor):
                 'type': item.get_type(),
                 'value': item.get_value()
             }
+    
+    def visitRefId(self, ctx: cppLexerParser.RefIdContext):
+        tmploadParam = self.loadParam
+        self.loadParam = False
+        res = self.visit(ctx.myID())
+        self.loadParam = tmploadParam
+        return res
+
+    def visitRefArray(self, ctx: cppLexerParser.RefArrayContext):
+        tmploadParam = self.loadParam
+        self.loadParam = False
+        res = self.visit(ctx.myArray())
+        self.loadParam = tmploadParam
+        return res
 
     def visitMyChar(self, ctx: cppLexerParser.MyCharContext):
         print("my char " * 5)
@@ -523,9 +567,6 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders.append(ir.IRBuilder(forCond))
 
         #determine whether jump to end or body
-        print(ctx.getChildCount())
-        print(ctx.getText())
-        print(ctx.getChild(4).getText())
         result = self.visit(ctx.getChild(4)) #Cond blk
         self.Builders[-1].cbranch(result['value'], forbody, forEnd)
         self.Builders.pop()
@@ -603,9 +644,17 @@ class myCppVisitor(cppLexerVisitor):
             res = builder.icmp_signed('==', operandDict['value'], ir.Constant(operandType, 0))
             return {
                 'type': ir.IntType(1),
-                'name': res
+                'value': res
             }
         return operandDict
+    
+    def arrayToPoint(self, operandDict):
+        builder = self.Builders[-1]
+        zero = ir.Constant(ir.IntType(32), 0)
+        res = builder.gep(operandDict['value'], [zero, zero], inbounds=True)
+        return {
+            'value': res
+        }
 
     # function call
     def visitFunc(self, ctx: cppLexerParser.FuncContext):
@@ -631,12 +680,12 @@ class myCppVisitor(cppLexerVisitor):
             while i < length - 1:
                 param = self.visit(ctx.getChild(i))
                 #TODO param convert
-                paramList.append(param['name'])
+                paramList.append(param['value'])
                 i += 2
             returnVar = builder.call(func, paramList)
             res = {
                 'type': func.function_type.return_type,
-                'name': returnVar
+                'value': returnVar
             }
             return res
         else:
@@ -648,10 +697,24 @@ class myCppVisitor(cppLexerVisitor):
         '''
 
         return self.visit(ctx.getChild(0))
-            
     
-
-
+    def visitMyString(self, ctx: cppLexerParser.MyStringContext):
+        processedString = ctx.getText().replace('\\n', '\n')
+        processedString = processedString[1:-1]
+        processedString += '\0'
+        Len = len(processedString)
+        res = ir.GlobalVariable(self.Module, ir.ArrayType(ir.IntType(8), Len), f".str{self.strConstIndex}")
+        self.strConstIndex += 1
+        res.global_constant = True
+        res.initializer = ir.Constant(ir.ArrayType(ir.IntType(8), Len), bytearray(processedString, 'utf-8'))
+        resDict = {
+            'type': ir.ArrayType(ir.IntType(8), Len).as_pointer(),
+            'value': res
+        }
+        return self.arrayToPoint(resDict)
+    
+    def visitString(self, ctx: cppLexerParser.StringContext):
+        return self.visit(ctx.getChild(0))
 def main(argv):
     input_stream = FileStream(argv[1])
     lexer = cppLexerLexer(input_stream)

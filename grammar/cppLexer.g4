@@ -4,9 +4,11 @@ True_: 'true';
 
 False_: 'false';
 
+DOTS: '...';
+
 boolLiteral: False_ | True_;
 
-prog : (include)* (myNamespace)* (myFunction | initVarBlock | initArrayBlock | structBlock)*;
+prog : (include)* (myNamespace)* (functionDecl | initVarBlock | initArrayBlock | structBlock)*;
 
 //include
 include : '#include' '<' LIB '>';
@@ -15,11 +17,14 @@ include : '#include' '<' LIB '>';
 myNamespace : 'using namespace std;';
 
 //函数
-myFunction : (myType | myVoid) myID '(' params ')' myBlock;
+
+functionDecl :
+    (myType | myVoid) myID '(' params ')' ';' #myFunctionDecl
+    | (myType | myVoid) myID '(' params ')' myBlock #myFunction;
 
 //函数参数
 params : param (','param)* |;
-param : myType myID;
+param : (myType myID) | DOTS;
 
 //函数体
 returnBlock : 'return' (myInt|myID)?';';
@@ -85,12 +90,14 @@ expr
     | structMem                     #structmember
     | func                          #function
     | boolLiteral                   #bool
+    | '&' myID                      #refId
+    | '&' myArray                   #refArray
     ;
 
 //todo more buildin
 buildin : 'endl';
 
-myType : 'int' | 'double' | 'char' | 'string' | 'bool';
+myType : 'int' | 'double' | 'char' | 'string' | 'bool' | 'char*' | 'void';
 
 myArray : myID '[' expr ']';
 
@@ -120,7 +127,7 @@ cinFunc : ('cin' ('>>' expr)+);
 // call function
 newFunc : myID '('((argument | myID)(','(argument | myID))*)?')';
 
-argument: myInt | myDouble | myChar | myString;
+argument: myInt | myDouble | myChar | myString | expr;
 
 ID : [a-zA-Z_][0-9a-zA-Z_]*;
 

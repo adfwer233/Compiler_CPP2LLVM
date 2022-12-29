@@ -1,22 +1,26 @@
-#include <iostream>
-#include <cstring>
-using namespace std;
+int printf(char* a, ...);
+int scanf(char* a, ...);
 
 int main() {
+
+	int len = 0;
+	scanf("%d", &len)
+
 	char stringc[50];
-	cin >> stringc;
-	int len = strlen(stringc);
+	scanf("%s", stringc)
+	
 	int IsPLD = 0;
-	for (int i = 0; i + i < len && IsPLD != 1; i = i + 1) 
+	int i = 0;
+	for (i = 0; i + i < len && IsPLD != 1; i = i + 1) 
 	{
 		if (stringc[len - 1 - i] != stringc[i]) 
 		{
-			cout << "False";
+			printf("False");
 			IsPLD = 1;
 		}
 	}
 	if (!IsPLD) {
-		cout << "True";
+		printf("True");
 	}
 	return 0;
 }
