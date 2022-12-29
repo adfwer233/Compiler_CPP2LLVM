@@ -46,7 +46,7 @@ statement:
 
 //初始化
 initVarBlock : myType myID ('=' expr) ? (',' myID ('=' expr)?)* ';';
-initArrayBlock : myType myID '[' myInt ']'('=' myArray)?';';
+initArrayBlock : myType myID '[' myInt ']'('=' '[' expr (',' expr)* ']')?';';
 initStructBlock : myStruct (myID | myArray)';';
 //赋值
 assignBlock : ((myArray | myID | structMem) '=')+ expr ';';
@@ -92,7 +92,7 @@ buildin : 'endl';
 
 myType : 'int' | 'double' | 'char' | 'string' | 'bool';
 
-myArray : (myID)? '[' expr (','expr)* ']';
+myArray : myID '[' expr ']';
 
 myVoid : 'void';
 

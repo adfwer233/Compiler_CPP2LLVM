@@ -73,12 +73,43 @@ class myCppVisitor(cppLexerVisitor):
         print("assign block")
 
         # TODO: add array assign
-        leftSymbol = self.symbolTable.getSymbolItem(ctx.getChild(0).getText())
+        tmploadParam = self.loadParam
+        self.loadParam = False
+        leftRes = self.visit(ctx.getChild(0))
+        self.loadParam = tmploadParam
+
         builder = self.Builders[-1]
         exprRes = self.visit(ctx.expr())
-        builder.store(exprRes['value'], leftSymbol.get_value())
+        builder.store(exprRes['value'], leftRes['value'])
 
+    def visitInitArrayBlock(self, ctx:cppLexerParser.InitArrayBlockContext):
+        # initArrayBlock : myType myID '[' myInt ']'('=' '[' expr (',' expr)* ']')?';';
+        type = self.visit(ctx.getChild(0))
+        ID = ctx.getChild(1).getText()
+        length = int(ctx.getChild(3).getText())
+        if self.symbolTable.get_current_level() == 0:
+            newArr = GlobalVariable(self.Module, ir.ArrayType(type, length), name=ID)
+            newArr.linkage = 'internal'
+            newArr.initializer = ir.Constant(ir.ArrayType(type, length), None)
+        else:
+            builder = self.Builders[-1]
+            newArr = builder.alloca(ir.ArrayType(type, length), name=ID)
 
+        symbolItem = SymbolItem(ir.ArrayType(type, length), newArr)
+        self.symbolTable.addLocal(ID, symbolItem)
+        count = ctx.getChildCount()
+        if count > 6:
+            childToVisit = 7
+            index = 0
+            builder = self.Builders[-1]
+            while index < length and childToVisit < count:
+                address = builder.gep(newArr, [ir.Constant(ir.IntType(32), 0), ir.Constant(ir.IntType(32), index)])
+                valueToStore = self.visit(ctx.getChild(childToVisit))['value']
+                builder.store(valueToStore, address)
+                childToVisit += 2
+                index += 1
+        print(self.symbolTable.table)
+        return
     def visitInt(self, ctx: cppLexerParser.IntContext):
         print("visit Int")
         if ctx.getChild(0).getText == '-':
@@ -294,6 +325,30 @@ class myCppVisitor(cppLexerVisitor):
             'type': ir.IntType(8),
             'value': ir.Constant(ir.IntType(8), ord(ctx.getText()[1]))
         }
+
+    def visitMyArray(self, ctx: cppLexerParser.MyArrayContext):
+        tmploadParam = self.loadParam
+        self.loadParam = False
+        res = self.visit(ctx.getChild(0))  # identifier
+        self.loadParam = tmploadParam
+
+        if isinstance(res['type'], ir.types.ArrayType):
+            builder = self.Builders[-1]
+
+            tmploadParam = self.loadParam
+            self.loadParam = True
+            operand = self.visit(ctx.getChild(2))
+            self.loadParam = tmploadParam
+            
+            intZero = ir.Constant(ir.IntType(32), 0)
+            returnRes = builder.gep(res['value'], [intZero, operand['value']], inbounds=True)
+
+            if self.loadParam:
+                returnRes = builder.load(returnRes)
+            return {
+                'type': res['type'].element,
+                'value': returnRes,
+            }
 
     def visitCondition(self, ctx: cppLexerParser.ConditionContext):
         print("visit condition")
