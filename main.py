@@ -112,6 +112,36 @@ class myCppVisitor(cppLexerVisitor):
     def visitMyInt(self, ctx: cppLexerParser.MyIntContext):
         print(ctx.getText())
         return super().visitMyInt(ctx)
+    
+    def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
+        # whileBlock : 'while' '(' condition ')' '{' myBody '}';
+        self.symbolTable.enterScope()
+        builder = self.Builders[-1]
+
+        whileCon = builder.append_basic_block()
+        whileBody = builder.append_basic_block()
+        whileEnd = builder.append_basic_block()
+
+        builder.branch(whileCon)
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(whileCon))
+
+        result = self.visit(ctx.getChild(2)) #cond
+        self.Builders[-1].cbranch(result['name'], whileBody, whileEnd)
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(whileBody))
+        self.visit(ctx.getChild(5)) #body
+
+        self.Builders[-1].branch(whileCon) #redetermine cond
+
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(whileEnd))
+
+        self.symbolTable.exitScope()
+
+        return
 
 def main(argv):
     input_stream = FileStream(argv[1])
