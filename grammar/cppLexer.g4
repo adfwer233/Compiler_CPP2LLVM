@@ -22,7 +22,6 @@ params : param (','param)* |;
 param : myType myID;
 
 //函数体
-myBody : (myBlock | func';')*;
 returnBlock : 'return' (myInt|myID)?';';
 
 //结构体
@@ -55,15 +54,15 @@ assignBlock : ((myArray | myID | structMem) '=')+ expr ';';
 
 //if
 ifBlock : myIf (myElif)* (myElse)?;
-myIf : 'if' '(' condition ')' '{' myBody '}';
-myElif : 'else' 'if' '(' condition ')' '{' myBody '}';
-myElse : 'else' '{' myBody '}';
+myIf : 'if' '(' condition ')' myBlock;
+myElif : 'else' 'if' '(' condition ')' myBlock;
+myElse : 'else' myBlock;
 
 //while
-whileBlock : 'while' '(' condition ')' '{' myBody '}';
+whileBlock : 'while' '(' condition ')' myBlock;
 
 //for
-forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
+forBlock : 'for' '(' for1 ';' condition ';' for3 ')' myBlock;
 for1 : myID '=' expr (',' for1)?|;
 for3 : myID '=' expr (',' for3)?|;
 

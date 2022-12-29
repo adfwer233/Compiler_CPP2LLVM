@@ -47,7 +47,7 @@ class myCppVisitor(cppLexerVisitor):
 
         #end if block
         self.endIf = None
-
+        self.Module.triple="x86_64-pc-linux"
 
     def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
         print(ctx.myType())
@@ -58,12 +58,12 @@ class myCppVisitor(cppLexerVisitor):
             if self.symbolTable.get_current_level() == 0: 
                 globalVar = GlobalVariable(self.Module, valType, idText.getText())
                 globalVar.linkage = 'internal'
-                globalVar.initializer = ir.Constant(valType, exprRes['value']) # TODO: add expr translation
+                globalVar.initializer = exprRes['value']
                 self.symbolTable.addGlobal(idText.getText(), SymbolItem(valType, globalVar))
             else:
                 builder = self.Builders[-1]
-                localVar = builder.alloca(valType, idText.getText())
-                builder.store(ir.Constant(valType, exprRes['value']), localVar)
+                localVar = builder.alloca(valType, name = idText.getText())
+                builder.store(exprRes['value'], localVar)
                 self.symbolTable.addLocal(idText.getText(), SymbolItem(valType, localVar))
         print(self.symbolTable.table)
         return
@@ -277,10 +277,16 @@ class myCppVisitor(cppLexerVisitor):
         item = self.symbolTable.getSymbolItem(idName)
         builder = self.Builders[-1]
         print(item.get_type())
-        return {
-            'type': item.get_type(),
-            'value': builder.load(item.get_value())
-        }
+        if self.loadParam == True:
+            return {
+                'type': item.get_type(),
+                'value': builder.load(item.get_value())
+            }
+        else:
+            return {
+                'type': item.get_type(),
+                'value': item.get_value()
+            }
 
     def visitMyChar(self, ctx: cppLexerParser.MyCharContext):
         print("my char " * 5)
@@ -290,10 +296,10 @@ class myCppVisitor(cppLexerVisitor):
         }
 
     def visitCondition(self, ctx: cppLexerParser.ConditionContext):
+        print("visit condition")
         result = self.visit(ctx.getChild(0)) #cond
-        #TODO 
-        # return.toBoolean(result, notFlag=False)
-        pass
+        return self.exprToBool(result)
+
 
     def visitIfBlock(self, ctx: cppLexerParser.IfBlockContext):
         '''
@@ -431,8 +437,9 @@ class myCppVisitor(cppLexerVisitor):
 
     def visitForBlock(self, ctx: cppLexerParser.ForBlockContext):
         '''
-        forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
+        forBlock : 'for' '(' for1 ';' condition ';' for3 ')' myblock;
         '''
+        print("visit for block here")
         self.symbolTable.enterScope()
 
         self.visit(ctx.getChild(2))
@@ -448,14 +455,17 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders.append(ir.IRBuilder(forCond))
 
         #determine whether jump to end or body
+        print(ctx.getChildCount())
+        print(ctx.getText())
+        print(ctx.getChild(4).getText())
         result = self.visit(ctx.getChild(4)) #Cond blk
         self.Builders[-1].cbranch(result['value'], forbody, forEnd)
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(forbody))
 
         #handle body
-        if (ctx.getChildCount() == 11):
-            self.visit(ctx.getChild(0)) #main body
+        if (ctx.getChildCount() == 9):
+            self.visit(ctx.getChild(8)) #main body
         
         #handle step
         self.visit(ctx.getChild(6)) #step blk
@@ -543,12 +553,16 @@ def main(argv):
     visitor = myCppVisitor()
     visitor.visit(tree)
 
-    print(str(visitor.Module))
+    ll = str(visitor.Module)
     # # stream.getText()
     # stream.fill()
     # for token in stream.tokens:
     #     print(token)
 
+    print(ll)
+
+    with open("./res.ll", 'w') as f:
+        f.write(ll)
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -1,8 +1,7 @@
 int main() {
-
+    return 0;
 }
 
-int global = 0;
 
 int test(int a, int b) {
     int x = 1;
@@ -11,9 +10,6 @@ int test(int a, int b) {
     a = 3;
     b = 3 * 4;
     b = 14 % 4;
-
-    x = a + b * global;
-    
 
     return x;
 }

@@ -2,3 +2,6 @@
 */.antlr
 __pycache__/
 /src
+
+res.ll
+res.s
