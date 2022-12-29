@@ -1,6 +1,6 @@
 grammar cppLexer;
 
-prog : (include)* (myNamespace)* (myFunction | initBlock | arrayBlock)*;
+prog : (include)* (myNamespace)* (myFunction | initVarBlock | initArrayBlock | structBlock)*;
 
 //include
 include : '#include' '<' LIB '>';
@@ -9,48 +9,73 @@ include : '#include' '<' LIB '>';
 myNamespace : 'using namespace std;';
 
 //函数
-myFunction : (myType | myVoid) myID '(' params ')' '{' myFuncBody '}';
+myFunction : (myType | myVoid) myID '(' params ')' myBlock;
 
 //参数
 params : param (','param)* |;
 param : myType myID;
 
 //函数体
-myFuncBody : body myReturn;
-body : (myBlock | func';')*;
-myReturn : 'return' (myInt|myID)?';';
+myBody : (myBlock | func';')*;
+returnBlock : 'return' (myInt|myID)?';';
+
+//结构体
+structBlock : myStruct '{' (structParam)+ '}'';';
+structParam : myType (myID | myArray) (',' (myID | myArray))* ';';
 
 //语句块
 // todo while & for
-myBlock : initBlock | arrayBlock | assignBlock | ifBlock | myReturn;
+myBlock : LBRACE (statement)* RBRACE;
+
+statement: 
+    initVarBlock 
+    | initArrayBlock 
+    | assignBlock 
+    | ifBlock 
+    | returnBlock
+    | whileBlock 
+    | forBlock
+    | expr? ';'
+    | myBlock;
 
 //初始化
-initBlock : myType myID ('=' expr) ? (',' myID ('=' expr)?)* ';';
-arrayBlock : (((myType myID '[' myInt ']') '=' '[' expr (',' expr)? ']') | ('char' myID '[]' '=' expr)) ';';
-
+initVarBlock : myType myID ('=' expr) ? (',' myID ('=' expr)?)* ';';
+initArrayBlock : myType myID '[' myInt ']'('=' myArray)?';';
+initStructBlock : myStruct (myID | myArray)';';
 //赋值
-assignBlock : ((myArray | myID ) '=')+ expr ';';
+assignBlock : ((myArray | myID | structMem) '=')+ expr ';';
+
 
 //if
 ifBlock : myIf (myElif)* (myElse)?;
-myIf : 'if' '(' condition ')' '{' body '}';
-myElif : 'else' 'if' '(' condition ')' '{' body '}';
-myElse : 'else' '{' body '}';
+myIf : 'if' '(' condition ')' '{' myBody '}';
+myElif : 'else' 'if' '(' condition ')' '{' myBody '}';
+myElse : 'else' '{' myBody '}';
+
+//while
+whileBlock : 'while' '(' condition ')' '{' myBody '}';
+
+//for
+forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
+for1 : (myType)? myID '=' expr;
+for3 : myID '=' expr;
 
 condition : expr;
 
 expr
     : '(' expr ')'
-    | op='!' expr
     | expr op=('+' | '-' | '*' | '/' | '%') expr
     | expr op=('==' | '!=' | '<' | '<=' | '>' | '>=') expr
+    | op='!' expr
     | expr '&&' expr
     | expr '||' expr
     | (op='-')? myInt
     | (op='-')? myDouble
     | myChar
+    | myArray
     | myString
     | myID
+    | structMem
     | func
     | buildin
     ;
@@ -60,7 +85,7 @@ buildin : 'endl';
 
 myType : 'int' | 'double' | 'char' | 'string';
 
-myArray : myID '[' (myInt)? ']';
+myArray : (myID)? '[' expr (','expr)* ']';
 
 myVoid : 'void';
 
@@ -74,12 +99,16 @@ myChar : CHAR;
 
 myString : STRING;
 
+myStruct : 'struct' myID;
+
+structMem : (myID | myArray)'.'(myID | myArray);
+
 // todo more func
 func : (coutFunc | cinFunc);
 
-coutFunc : ('cout' ('<<' expr)+) ';';
+coutFunc : ('cout' ('<<' expr)+);
 
-cinFunc : ('cin' ('>>' expr)+) ';';
+cinFunc : ('cin' ('>>' expr)+);
 
 ID : [a-zA-Z_][0-9a-zA-Z_]*;
 
@@ -104,3 +133,7 @@ Newline: ('\r' '\n'? | '\n') -> skip;
 BlockComment: '/*' .*? '*/' -> skip;
 
 LineComment: '//' ~ [\r\n]* -> skip;
+
+LBRACE: '{';
+
+RBRACE: '}';
