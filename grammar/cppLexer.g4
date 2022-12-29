@@ -11,7 +11,7 @@ myNamespace : 'using namespace std;';
 //函数
 myFunction : (myType | myVoid) myID '(' params ')' myBlock;
 
-//参数
+//函数参数
 params : param (','param)* |;
 param : myType myID;
 
@@ -57,8 +57,8 @@ whileBlock : 'while' '(' condition ')' '{' myBody '}';
 
 //for
 forBlock : 'for' '(' for1 ';' condition ';' for3 ')' '{' myBody '}';
-for1 : (myType)? myID '=' expr;
-for3 : myID '=' expr;
+for1 : myID '=' expr (',' for1)?|;
+for3 : myID '=' expr (',' for3)?|;
 
 condition : expr;
 

@@ -45,6 +45,9 @@ class myCppVisitor(cppLexerVisitor):
         #load param
         self.loadParam = True
 
+        #end if block
+        self.endIf = None
+
 
     def visitInitVarBlock(self, ctx: cppLexerParser.InitVarBlockContext):
         print(ctx.myType())
@@ -251,6 +254,44 @@ class myCppVisitor(cppLexerVisitor):
             'value': ir.Constant(ir.IntType(8), ord(ctx.getText()[1]))
         }
 
+    def visitCondition(self, ctx: cppLexerParser.ConditionContext):
+        result = self.visit(ctx.getChild(0)) #cond
+        #TODO 
+        # return.toBoolean(result, notFlag=False)
+        pass
+
+    def visitIfBlock(self, ctx: cppLexerParser.IfBlockContext):
+        '''
+        ifBlock : myIf (myElif)* (myElse)?;
+        '''
+        builder = self.Builders[-1]
+        ifblock = builder.append_basic_block()
+        endifblock = builder.append_basic_block()
+        builder.branch(ifblock)
+
+        #load ifblock
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(ifblock))
+
+        #handle endifblock
+        tmpendif = self.endIf
+        self.endIf - endifblock
+
+        length = ctx.getChildCount()
+        for i in range(length):
+            self.visit(ctx.getChild(i)) #handle if elif else
+
+        self.endIf = tmpendif
+
+        #if finish route to endif block
+        tmpbuilder = self.Builders.pop()
+        if not tmpbuilder.is_terminated:
+            tmpbuilder.branch(endifblock)
+
+        self.Builders.append(ir.IRBuilder(endifblock))
+
+        return
+
     def visitMyIf(self, ctx: cppLexerParser.MyIfContext):
         '''
         myIf : 'if' '(' condition ')' '{' myBody '}';
@@ -264,12 +305,64 @@ class myCppVisitor(cppLexerVisitor):
 
         #route block base on the condition result
         result = self.visit(ctx.getChild(2))
-        builder.cbranch(result['name'], trueblk, falseblk)
+        builder.cbranch(result['value'], trueblk, falseblk)
 
         #condition true body
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(trueblk))
         self.visit(ctx.getChild(5)) # body
+
+        if not self.Builders[-1].is_terminated:
+            self.Builders[-1].branch(self.endIf)
+        
+        #handle condition false
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(falseblk))
+        self.symbolTable.exitScope()
+
+        return
+
+    def visitMyElif(self, ctx: cppLexerParser.MyElifContext):
+        '''
+        myElif : 'else' 'if' '(' condition ')' '{' myBody '}';
+        '''
+        # same as if there are false and true block
+        self.symbolTable.enterScope()
+        builder = self.Builders[-1]
+        trueblk = builder.append_basic_block()
+        falseblk = builder.append_basic_block()
+
+        #route block base on condition result
+        result = self.visit(ctx.getChild(3))
+        builder.cbranch(result['value'], trueblk, falseblk)
+
+        #condition true -> trueblk
+        self.Builders.pop()
+        self.Builders.append(ir.IRBuilder(trueblk))
+        self.visit(ctx.getChild(6)) # body
+
+        if not self.Builders[-1].is_terminated:
+            self.Builders[-1].branch(self.endIf)
+
+        #condition false
+        self.Builders.pop()
+        self.Builders.append(ir.builder(falseblk))
+        
+        self.symbolTable.exitScope()
+
+        return
+
+    def visitMyElse(self, ctx: cppLexerParser.MyElseContext):
+        '''
+        myElse : 'else' '{' myBody '}';
+        '''
+
+        #directly handle mybody
+        self.symbolTable.enterScope()
+        self.visit(ctx.getChild(2)) # body
+        self.symbolTable.exitScope()
+
+        return
     
     def visitWhileBlock(self, ctx: cppLexerParser.WhileBlockContext):
         # whileBlock : 'while' '(' condition ')' '{' myBody '}';
@@ -286,7 +379,7 @@ class myCppVisitor(cppLexerVisitor):
         self.Builders.append(ir.IRBuilder(whileCon))
 
         result = self.visit(ctx.getChild(2)) #cond
-        self.Builders[-1].cbranch(result['name'], whileBody, whileEnd)
+        self.Builders[-1].cbranch(result['value'], whileBody, whileEnd)
 
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(whileBody))
@@ -322,7 +415,7 @@ class myCppVisitor(cppLexerVisitor):
 
         #determine whether jump to end or body
         result = self.visit(ctx.getChild(4)) #Cond blk
-        self.Builders[-1].cbranch(result['name'], forbody, forEnd)
+        self.Builders[-1].cbranch(result['value'], forbody, forEnd)
         self.Builders.pop()
         self.Builders.append(ir.IRBuilder(forbody))
 
@@ -342,6 +435,52 @@ class myCppVisitor(cppLexerVisitor):
         self.symbolTable.exitScope()
 
         return
+
+    def visitFor1(self, ctx: cppLexerParser.For1Context):
+        '''
+        for1 : myID '=' expr (',' for1)?|;
+        '''
+        length = ctx.getChildCount()
+        if length==0:
+            return
+        
+        Paramload = self.loadParam
+        self.loadParam = False
+        res0 = self.visit(ctx.getChild(0)) #myID
+        self.loadParam = Paramload
+
+        #Visit expr
+        res1 = self.visit(ctx.getChild(2)) # expr
+        #TODO assign convert
+        self.Builders[-1].store(res1['value'], res0['value'])
+
+        if length > 3:
+            self.visit(ctx.getChild(4))
+        
+        return
+    
+    def visitFor3(self, ctx: cppLexerParser.For3Context):
+        '''
+        for3 : myID '=' expr (',' for3)?|;
+        '''
+        length = ctx.getChildCount()
+        if length == 0:
+            return
+        
+        Paramload = self.loadParam
+        self.loadParam = False
+        res0 = self.visit(ctx.getChild(0)) #myID
+        self.loadParam = Paramload
+
+        # visit expr
+        res1 = self.visit(ctx.getChild(2)) # expr
+        #TODO: assign convert
+        self.Builders[-1].store(res1['value'], res0['value'])
+
+        if length > 3:
+            self.visit(ctx.getChild(4))
+        return
+
 
 def main(argv):
     input_stream = FileStream(argv[1])
